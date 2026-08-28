@@ -1,117 +1,218 @@
-# Delete Engine
+# Delete Engine — Editing and Building Guide
 
-A small desktop app that permanently deletes files listed in an Excel tracker.
-
-You choose how many files to delete, pick the tracker, review the count, and confirm. The app then deletes the files and saves a results log.
-
-**Deletion is permanent. Files do not go to the Recycle Bin and cannot be recovered.**
+For people who don't write Python. You don't need to understand the code. You just need to find a line and change one part of it.
 
 ---
 
-## Requirements
+## Part 1 — Before you edit anything
 
-- Python 3.8 or newer
-- Two packages:
+**Make a backup copy of `Delete_Engine.py` first.** Copy, paste, rename it `Delete_Engine_BACKUP.py`. If an edit breaks the app, delete the broken file and rename the backup back.
 
-```
-pip install pandas openpyxl
-```
+**Open the file the right way:**
+- Right-click `Delete_Engine.py` → Open with → **Notepad**
+- Do **not** open it in Word or WordPad. They add invisible formatting that breaks the file.
 
-- The network drive must be mapped as **Z:** before you run the app.
+**Two rules that will save you:**
 
----
+1. **Never change the spaces at the start of a line.** Python uses those spaces to understand the code. If a line starts with 8 spaces, it must keep 8 spaces.
+2. **Only change what's between the quote marks.** The quotes themselves stay.
 
-## How to run
-
-Double-click `Delete_Engine.py`, or from a command prompt:
-
-```
-python Delete_Engine.py
-```
+When you save, use File → Save. Don't use Save As unless you set "Save as type" to **All Files**, or Notepad will turn it into `Delete_Engine.py.txt` and it will stop working.
 
 ---
 
-## What your Excel file needs
+## Part 2 — The parts you might want to change
 
-The tracker must be `.xlsx` and must have these two columns by name:
+### A. The drive letter
 
-| Column name | What goes in it |
+Right now every path is forced to `Z:`. If your drive is mapped as something else, change it here.
+
+**Find:**
+```python
+            path = 'Z:' + path[2:]
+```
+
+**Change** the `Z` to your letter. For drive O:
+```python
+            path = 'O:' + path[2:]
+```
+
+Keep the colon and keep the quotes.
+
+There's also a mention of Z: in the on-screen instructions further down the file. Change that too so the text matches:
+```python
+5. It automatically fixes the drive letter to Z:.
+```
+
+---
+
+### B. Which columns are checked
+
+**Find:**
+```python
+    col_L_condition = df.iloc[:, 11].astype(str).str.strip().str.lower() == 'destroy'
+    col_P_condition = df.iloc[:, 15].astype(str).str.strip().str.lower() == 'yes'
+```
+
+Two things you can change on each line: **the number** and **the word in quotes**.
+
+**The number is the column position, counting from zero.** So the number is always one less than the real column number:
+
+| Excel column | Number to use |
 |---|---|
-| `Full File Path` | The complete path to the file |
-| `File Name` | The file name (used in the results log) |
+| A | 0 |
+| B | 1 |
+| ... | ... |
+| K | 10 |
+| L | **11** |
+| M | 12 |
+| N | 13 |
+| O | 14 |
+| P | **15** |
+| Q | 16 |
 
-It also checks two columns **by position**, not by name:
+So if your "destroy" flag moves from column L to column N, change `11` to `13`.
 
-| Position | Column | Must contain |
-|---|---|---|
-| 12th column | L | `destroy` |
-| 16th column | P | `yes` |
+**The word in quotes is what it looks for.** Change `'destroy'` to `'purge'` if that's what your tracker says. Type it in lowercase — the app already handles capitals and extra spaces.
 
-Both values are case-insensitive and extra spaces are ignored.
-
-A row is only deleted if **both** conditions are true. Rows with a blank `Full File Path` are skipped.
-
-> Important: because columns L and P are read by position, inserting or removing columns in your tracker will break the app. Keep the column order the same.
-
----
-
-## Steps
-
-1. Type how many files you want to delete. It starts at 50.
-2. Click **Select File & Start**.
-3. Pick your Excel tracker.
-4. The app filters rows where L = destroy and P = yes.
-5. It swaps the drive letter on each path to `Z:` (for example, `O:\Records\file.pdf` becomes `Z:\Records\file.pdf`).
-6. It checks which files actually exist on the server and stops once it reaches your number.
-7. It shows you how many it found and asks you to confirm.
-8. If you click Yes, it deletes them.
-9. It saves a results file next to your tracker.
+> This is the most dangerous edit in the file. If you point it at the wrong column, it will happily delete the wrong files. After any change here, test with the count set to 1 or 2 and check the results file before doing a real batch.
 
 ---
 
-## The results file
+### C. The column names it reads
 
-Saved in the same folder as your tracker, named:
-
-```
-Deletion_Results_YYYYMMDD-HHMMSS.xlsx
+**Find:**
+```python
+    df = df.dropna(subset=['Full File Path'])
 ```
 
-| Column | Meaning |
-|---|---|
-| File Name | From your tracker |
-| Checked Path | The path after the drive letter was changed to Z: |
-| Status | `DELETED` or `ERROR` |
+and further down:
+```python
+        path = str(row['Full File Path'])
+        name = str(row['File Name'])
+```
 
-`ERROR` usually means the file was locked, in use, or you don't have permission to delete it.
+`'Full File Path'` and `'File Name'` must match your Excel headers **exactly** — same spelling, same capitals, same spaces. If your tracker says `FilePath` instead, change all three spots to `'FilePath'`.
 
----
-
-## Working in batches
-
-The count box is there so you can start small. Run 5 or 10 first, open the results file, and confirm the right files were removed. Once you trust it, raise the number.
+Easier option: just rename the headers in Excel to match the script. Less to break.
 
 ---
 
-## Common problems
+### D. The starting number in the box
 
-**"Please enter a valid number."**
-The count box is empty or has letters in it. Type digits only.
+**Find:**
+```python
+entry_count.insert(0, "50")
+```
 
-**"Could not read file."**
-The file isn't a valid `.xlsx`, or it's open in Excel. Close it and try again.
-
-**"No matching files found on the server."**
-One of three things: no rows matched destroy + yes, the paths don't exist under `Z:`, or the Z: drive isn't mapped.
-
-**Everything comes back as ERROR.**
-Usually a permissions issue on the network drive, or the files are open by someone else.
+Change `50` to whatever you want it to start at, like `10`. You can still type over it in the app.
 
 ---
 
-## Things to know before you use it
+### E. The app title and window size
 
-- There is no undo and no quarantine step. Files are gone.
-- The app only deletes files, not folders.
-- Nothing is written back to your tracker. If you need to mark rows as done, do it yourself using the results file.
-- Keep every results file. It's your only record of what was deleted.
+**Find:**
+```python
+root.title("Delete Engine")
+root.geometry("450x450")
+```
+
+Change the text in quotes for the title. For the size, the first number is width and the second is height. If the instructions get cut off after you edit them, make the second number bigger: `"450x550"`.
+
+---
+
+### F. The instructions shown in the app
+
+**Find** the block that starts:
+```python
+instructions = """
+HOW THIS APP WORKS:
+```
+
+Everything between the `"""` marks is plain text. Edit it however you like. Just don't delete either set of three quote marks.
+
+---
+
+### G. The results file name
+
+**Find:**
+```python
+        results_path = f"{folder_path}/Deletion_Results_{timestamp}.xlsx"
+```
+
+Change `Deletion_Results` to whatever you want. Leave `{folder_path}`, `{timestamp}` and `.xlsx` alone — those fill themselves in.
+
+---
+
+## Part 3 — Test after every edit
+
+1. Double-click the file. If the window opens, your edit didn't break anything.
+2. If a black window flashes and disappears, something is wrong. Open Command Prompt, type `python ` (with a space), drag the file onto the window, press Enter. The error message will stay on screen. Usually it names the line number.
+3. If you can't fix it, restore your backup.
+
+Then run a real test with the count set to **1**. Open the results file and confirm it deleted the file you expected.
+
+---
+
+## Part 4 — Turning it into an .exe
+
+The point of this is that other people can run it without installing Python.
+
+You only need to do this on **your** machine. They just get the finished file.
+
+### Step 1 — Install Python (skip if you already have it)
+
+Download from python.org. During install, **tick the box that says "Add python.exe to PATH"** before clicking Install. This is the step everyone misses.
+
+### Step 2 — Install the three packages
+
+Open Command Prompt (press Start, type `cmd`, Enter) and paste:
+
+```
+pip install pandas openpyxl pyinstaller
+```
+
+Wait for it to finish. It takes a few minutes.
+
+### Step 3 — Go to your file's folder
+
+In Command Prompt, type `cd ` (with a space), then drag the folder containing `Delete_Engine.py` onto the Command Prompt window, then press Enter.
+
+### Step 4 — Build it
+
+Paste this and press Enter:
+
+```
+pyinstaller --onefile --windowed --name "Delete Engine" Delete_Engine.py
+```
+
+What those parts mean:
+- `--onefile` — makes one single .exe instead of a folder full of files
+- `--windowed` — stops a black console window from appearing behind the app
+- `--name` — what the .exe will be called
+
+This takes 2–10 minutes. Lots of text will scroll by. That's normal.
+
+### Step 5 — Get your file
+
+Look in the new **`dist`** folder next to your script. `Delete Engine.exe` is in there. That one file is everything you send out.
+
+You can ignore or delete the `build` folder and the `.spec` file.
+
+---
+
+## Part 5 — Things people run into
+
+**The .exe is 300+ MB.** Normal. Pandas and Excel support are bundled inside. Too big to email — share it through OneDrive or a network folder.
+
+**It takes 10–20 seconds to open.** Also normal for `--onefile`. It's unpacking itself each time. If that's annoying, build without `--onefile` — you get a folder instead of a single file, it opens instantly, but you have to share the whole folder and they must keep it together.
+
+**Antivirus blocks it or deletes it.** Common with PyInstaller files. You'll likely need IT to whitelist it. Tell them upfront rather than after it gets quarantined.
+
+**"Windows protected your PC" on their machine.** They click "More info" → "Run anyway". This appears because the file isn't code-signed.
+
+**It won't find any files on their computer.** They need the same drive letter mapped as you do. The .exe doesn't carry the drive mapping with it.
+
+**You edited the .py but the .exe still behaves the old way.** The .exe is a frozen snapshot. Every time you change the script, you have to run the build command again and send out the new .exe.
+
+---
